@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SkyParcel Pioneers - Difficulty Modes</title>
+    <title>SkyParcel Pioneers - Tutorial Update</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
@@ -120,7 +120,7 @@
         .shop-item.owned { background-color: #d4eed5; border-color: #a5d6a7; }
         .shop-item.equipped { background-color: #badafb; border: 2px solid #6699bb; font-weight: bold; }
         
-        button, .dialog-button, .control-button, .mode-button {
+        button, .dialog-button, .control-button, .mode-button, .tutorial-button {
             font-family: 'Press Start 2P', cursive;
             background-color: #ff8c00; 
             color: white;
@@ -134,10 +134,10 @@
             text-shadow: 1px 1px #8B4513; 
             font-size: 0.7em; 
         }
-        button:hover, .dialog-button:hover, .control-button:hover, .mode-button:hover {
+        button:hover, .dialog-button:hover, .control-button:hover, .mode-button:hover, .tutorial-button:hover {
             background-color: #e07b00;
         }
-        button:active, .dialog-button:active, .control-button:active, .mode-button:active {
+        button:active, .dialog-button:active, .control-button:active, .mode-button:active, .tutorial-button:active {
             transform: translateY(1px) translateX(1px);
             box-shadow: 1px 1px 0px #c66a00;
         }
@@ -154,21 +154,29 @@
         .boss-heart { font-size: 1.1em; color: purple; }
         .boss-heart.empty { color: #ddd; }
         
-        #villain-dialog, #game-over-dialog, #mode-selection-dialog {
+        #villain-dialog, #game-over-dialog, #mode-selection-dialog, #tutorial-dialog {
             position: fixed; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
             background-color: rgba(40, 40, 60, 0.97); 
             color: #FFD700; padding: 15px; 
             border: 3px solid #8B4513; border-radius: 10px;
             box-shadow: 0 0 20px rgba(0,0,0,0.7); z-index: 1000;
-            width: 85%; max-width: 360px; 
+            width: 85%; max-width: 400px; 
             text-align: center;
         }
-        #villain-dialog p, #game-over-dialog p, #mode-selection-dialog p {
+        #villain-dialog p, #game-over-dialog p, #mode-selection-dialog p, #tutorial-dialog p {
             margin-bottom: 10px; font-size: 0.8em; line-height: 1.3;
+        }
+        #tutorial-dialog h3 { 
+            font-size: 1em;
+            margin-bottom: 10px;
+            color: #FFFFA0; 
         }
         .dialog-button { background-color: #A52A2A; box-shadow: 2px 2px 0px #5c1a1a; }
         .dialog-button:hover { background-color: #8B0000; }
+        .tutorial-button { background-color: #388E3C; box-shadow: 2px 2px 0px #1B5E20; } 
+        .tutorial-button:hover { background-color: #2E7D32; }
+
         .control-button-panel { display: flex; justify-content: center; gap: 10px; margin-top: 6px;}
         .mode-button {
             padding: 10px 15px;
@@ -181,16 +189,17 @@
         .mode-button.hard:hover { background-color: #E53935;}
 
 
-        .game-content.hidden { display: none; } /* For hiding main game before mode selection */
+        .game-content.hidden { display: none; } 
 
 
         @media (max-width: 767px) { 
             .game-wrapper { padding: 5px; }
-            .ui-panel, #villain-dialog, #game-over-dialog, #mode-selection-dialog { padding: 8px; margin-bottom: 8px; }
+            .ui-panel, #villain-dialog, #game-over-dialog, #mode-selection-dialog, #tutorial-dialog { padding: 8px; margin-bottom: 8px; }
             h1 { font-size: 1rem; } 
             h2 { font-size: 0.8rem; }
-            button, .dialog-button, .control-button, .mode-button { padding: 6px 10px; font-size: 0.65em;}
-            #villain-dialog p, #game-over-dialog p, #mode-selection-dialog p { font-size: 0.75em; }
+            button, .dialog-button, .control-button, .mode-button, .tutorial-button { padding: 6px 10px; font-size: 0.65em;}
+            #villain-dialog p, #game-over-dialog p, #mode-selection-dialog p, #tutorial-dialog p { font-size: 0.75em; }
+            #tutorial-dialog h3 { font-size: 0.9em; }
             #message-box { font-size: 0.7em; }
             .heart { font-size: 1.1em; }
             .boss-heart { font-size: 1em; }
@@ -206,7 +215,14 @@
         <button id="hard-mode-btn" class="mode-button hard">Hard Mode</button>
     </div>
 
-    <div class="game-wrapper game-content hidden"> <div class="game-main-column">
+    <div id="tutorial-dialog" class="hidden"> 
+        <h3 id="tutorial-title"></h3>
+        <p id="tutorial-message"></p>
+        <button id="tutorial-next-btn" class="tutorial-button"></button>
+    </div>
+
+    <div class="game-wrapper game-content hidden"> 
+        <div class="game-main-column">
             <header class="text-center my-2 sm:my-3">
                 <h1 class="text-lg sm:text-2xl font-bold text-white" style="text-shadow: 2px 2px #4a5568;">SkyParcel Pioneers</h1>
             </header>
@@ -299,6 +315,10 @@
         const hardModeBtn = document.getElementById('hard-mode-btn');
         const gameContentWrapper = document.querySelector('.game-wrapper.game-content');
         const gameModeDisplay = document.getElementById('game-mode-display');
+        const tutorialDialog = document.getElementById('tutorial-dialog');
+        const tutorialTitle = document.getElementById('tutorial-title');
+        const tutorialMessage = document.getElementById('tutorial-message');
+        const tutorialNextBtn = document.getElementById('tutorial-next-btn');
 
 
         // Sound Synthesis (Tone.js) - Single theme song
@@ -341,7 +361,7 @@
         }
 
         // Game State
-        let gameMode = null; // 'normal' or 'hard'
+        let gameMode = null; 
         let skyCoins = 0;
         const airshipTypes = { 
             pioneer: { name: "Pioneer", color: '#FF6347', speed: 2.5, maxHealth: 10, cost: 0, owned: true },
@@ -356,7 +376,7 @@
             dx: 0, dy: 0, currentJobId: null, hasPackage: false, packageDetails: null,
             inStorm: false, stormSoundPlaying: false, lastShotTime: 0, shootCooldown: 500,
             lastNonZeroDx: 1, lastNonZeroDy: 0,
-            lastContactDamageTime: 0, contactDamageCooldown: 1500 // For Hard mode pirate collision
+            lastContactDamageTime: 0, contactDamageCooldown: 1500 
         };
         const cannonballTypes = {
             regular: { name: "Cannonball", cost: 200, damage: 1, iconClass: "icon-cannonball" },
@@ -400,13 +420,50 @@
             Space: false 
         };
 
+        // --- Tutorial System ---
+        const tutorialSteps = [
+            { title: "Welcome, Sky Captain!", message: "Welcome to SkyParcel Pioneers! Get ready to soar through the skies of Aeria, deliver packages, and become a legend!", button: "Let's Go!" },
+            { title: "Your Mission!", message: "Your main goal is to deliver packages between the floating islands. Earn SkyCoins 💰, upgrade your airship, and build your reputation!", button: "Got It!" },
+            { title: "Getting Work!", message: "Check the <b>Job Board</b> (on the right). Click on a job (🎁 icon) and hit 'Accept'. Your current task will appear in your stats!", button: "Understood!" },
+            { title: "Upgrade Your Ride!", message: "Visit the <b>Airship Emporium</b> (right sidebar, 🚀 icon). Use SkyCoins to buy better airships with different speeds and health. Don't forget to 'Equip' your new ship!", button: "Sounds Good!" },
+            { title: "Arm Yourself!", message: "The <b>Celestial Armory</b> (right sidebar, ⚫ icon) is where you buy cannonballs. Regular ones are good, but <b>Thunderballs</b> (⚡) pack a bigger punch (2x damage)!", button: "Ready for Action!" },
+            { title: "Sky Pirates! ☠️", message: "Beware! <b>Captain Pegleg Pete</b> might try to steal your cargo (1 hit to defeat). If you have over 1000 SkyCoins, the fearsome <b>Dread Pirate Stormbeard</b> (5 hits) might appear and try to take ALL your coins AND your package! In Hard Mode, pirate collisions also damage your ship.", button: "Let's Fly!" }
+        ];
+        let currentTutorialStep = 0;
+        let tutorialActive = false;
+
+        function showTutorialStep(stepIndex) {
+            if (stepIndex >= tutorialSteps.length) {
+                tutorialDialog.classList.add('hidden');
+                tutorialActive = false;
+                gamePaused = false; 
+                initializeFullGame(); // Initialize the game after tutorial is done
+                return;
+            }
+            tutorialActive = true;
+            gamePaused = true; 
+            const step = tutorialSteps[stepIndex];
+            tutorialTitle.textContent = step.title;
+            tutorialMessage.innerHTML = step.message; 
+            tutorialNextBtn.textContent = step.button;
+            tutorialDialog.classList.remove('hidden');
+        }
+
+        tutorialNextBtn.addEventListener('click', () => {
+            currentTutorialStep++;
+            showTutorialStep(currentTutorialStep);
+        });
+
+
         // --- Game Mode Selection ---
         function selectGameMode(selectedMode) {
             gameMode = selectedMode;
-            gameModeDisplay.textContent = gameMode.charAt(0).toUpperCase() + gameMode.slice(1); // Capitalize
+            gameModeDisplay.textContent = gameMode.charAt(0).toUpperCase() + gameMode.slice(1); 
             modeSelectionDialog.classList.add('hidden');
             gameContentWrapper.classList.remove('hidden');
-            initializeFullGame(); // New function to start the game after mode selection
+            
+            currentTutorialStep = 0; 
+            showTutorialStep(currentTutorialStep);
         }
 
         normalModeBtn.addEventListener('click', () => selectGameMode('normal'));
@@ -422,32 +479,26 @@
                 if (typeof Tone !== 'undefined' && Tone.context.state !== 'running') {
                     try { 
                         await Tone.start(); console.log("Audio context started");
-                        if (!musicMuted && Tone.Transport.state !== "started") { 
-                            Tone.Transport.start(); 
-                            if(themeMelody && themeMelody.state !== "started") themeMelody.start(0);
-                            if(bassLoop && bassLoop.state !== "started") bassLoop.start(0);
-                        }
                     }
                     catch (e) { console.error("Failed to start audio context:", e); }
                 }
+                 // Music is started by resetGame if conditions are met
             };
-            // Audio context might have already been started by mode selection click, but good to have.
             if (Tone.context.state !== 'running') {
                  ['click', 'keydown', 'touchstart'].forEach(eventType => {
                     document.body.addEventListener(eventType, startAudioContext, { once: true });
                 });
-            } else { // If already running, just ensure music starts if not muted
-                 if (!musicMuted && Tone.Transport.state !== "started" && typeof Tone !== 'undefined') { 
-                    Tone.Transport.start(); 
-                    if(themeMelody && themeMelody.state !== "started") themeMelody.start(0);
-                    if(bassLoop && bassLoop.state !== "started") bassLoop.start(0);
-                }
             }
             
             updateHealthBar(); updateCannonballDisplay(); displayShopItems(); displayArmoryItems();
             airshipTypeDisplay.textContent = airshipTypes[player.currentAirship].name;
-            showMessage("Watch out for Storms and Sky Pirates, Pioneer! Press Space to fire cannons.");
-            if (!gameOverState) requestAnimationFrame(gameLoop); 
+            
+            if (!gameOverState && !tutorialActive) { 
+                 showMessage("A new voyage begins! Good luck, Pioneer!"); 
+                 requestAnimationFrame(gameLoop); 
+            } else if (!gameMode) { 
+                showMessage("Select a difficulty to begin!");
+            }
         }
 
 
@@ -460,7 +511,7 @@
             player.currentJobId = null; player.hasPackage = false; player.packageDetails = null;
             player.inStorm = false; player.stormSoundPlaying = false;
             player.lastNonZeroDx = 1; player.lastNonZeroDy = 0; 
-            player.lastContactDamageTime = 0; // Reset contact damage timer
+            player.lastContactDamageTime = 0; 
             
             villain.active = false; villain.x = -100; villain.y = -100; villain.health = villain.maxHealth;
             bossVillain.active = false; bossVillain.x = -100; bossVillain.y = -100; bossVillain.health = bossVillain.maxHealth;
@@ -471,17 +522,25 @@
             jobs = []; nextJobId = 1;
             for (let i = 0; i < 3; i++) generateJob();
             
-            gameOverState = false; gamePaused = false;
+            gameOverState = false; 
+            // gamePaused is true if tutorial is active, false otherwise after tutorial.
+            // Let showTutorialStep manage gamePaused during tutorial.
+            // If resetGame is called for a restart, tutorialActive will be false.
+            if (!tutorialActive) gamePaused = false;
+
             gameOverDialog.classList.add('hidden');
             
             updateSkyCoinsDisplay(); updateHealthBar(); updateCannonballDisplay();
             updateCurrentTaskDisplay(); displayJobs(); displayShopItems(); displayArmoryItems();
-            if (gameMode) showMessage("A new voyage begins! Good luck, Pioneer!"); // Only if mode selected
-            
-            if (!musicMuted && Tone.Transport.state !== "started" && typeof Tone !== 'undefined' && gameMode) { // Ensure gameMode is set
-                 Tone.Transport.start(); 
-                 if(themeMelody && themeMelody.state !== "started") themeMelody.start(0);
-                 if(bassLoop && bassLoop.state !== "started") bassLoop.start(0);
+            if (gameMode && !tutorialActive) { 
+                showMessage("A new voyage begins! Good luck, Pioneer!"); 
+                if (!musicMuted && Tone.Transport.state !== "started" && typeof Tone !== 'undefined') {
+                     Tone.Transport.start(); 
+                     if(themeMelody && themeMelody.state !== "started") themeMelody.start(0);
+                     if(bassLoop && bassLoop.state !== "started") bassLoop.start(0);
+                }
+            } else if (!gameMode) {
+                showMessage("Select a difficulty to begin!");
             }
         }
         
@@ -501,7 +560,7 @@
             obstacles[1].x = canvas.width * 0.2; obstacles[1].y = canvas.height * 0.8;
             obstacles[2].x = canvas.width * 0.85; obstacles[2].y = canvas.height * 0.35;
 
-            if(ctx && gameMode) draw(); // Only draw if game has started
+            if(ctx && gameMode && !tutorialActive) draw(); 
         }
         window.addEventListener('resize', resizeCanvas);
 
@@ -732,12 +791,11 @@
                 const dist = Math.sqrt((player.x + player.width/2 - (pirateToUpdate.x + pirateToUpdate.width/2))**2 + 
                                      (player.y + player.height/2 - (pirateToUpdate.y + pirateToUpdate.height/2))**2);
                 
-                // Hard Mode: Pirate Contact Damage
                 const currentTime = Date.now();
                 if (gameMode === 'hard' && dist < (player.width + pirateToUpdate.width) / 2 && 
                     (currentTime - player.lastContactDamageTime > player.contactDamageCooldown)) {
                     
-                    player.health -= 1; // Half a heart
+                    player.health -= 1; 
                     player.lastContactDamageTime = currentTime;
                     updateHealthBar();
                     showMessage(`Ouch! Pirate collision in Hard Mode!`);
@@ -749,7 +807,6 @@
                     }
                 }
                 
-                // Package Stealing Logic (applies to both modes if contact is made)
                 if (dist < (player.width + pirateToUpdate.width) / 2 && player.hasPackage) {
                     const currentJob = jobs.find(job => job.id === player.currentJobId);
                     if (currentJob) {
@@ -1002,14 +1059,8 @@
         }
         restartGameBtn.addEventListener('click', () => {
             gameOverDialog.classList.add('hidden');
-            // resetGame() is called from selectGameMode after a mode is chosen,
-            // or if we want to restart in the same mode, we can call it directly.
-            // For now, clicking restart will take them back to mode selection.
-            modeSelectionDialog.classList.remove('hidden');
-            gameContentWrapper.classList.add('hidden');
-            // No, for restart, we should use the current gameMode
-            if(gameMode) initializeFullGame(); // Re-initialize with the current mode
-            else { // Should not happen if game was started, but as a fallback:
+            if(gameMode) initializeFullGame(); 
+            else { 
                  modeSelectionDialog.classList.remove('hidden');
                  gameContentWrapper.classList.add('hidden');
             }
@@ -1147,7 +1198,7 @@
             const elapsed = currentTime - lastRenderTime;
             if (elapsed > frameInterval) {
                 lastRenderTime = currentTime - (elapsed % frameInterval);
-                if (!gamePaused && !gameOverState && gameMode) { // Ensure gameMode is selected
+                if (!gamePaused && !gameOverState && gameMode) { 
                     updatePlayer();
                     updatePirateLogic(); 
                     updateProjectiles();
@@ -1158,10 +1209,8 @@
 
         // --- Initialization ---
         function init() {
-            // Show mode selection, hide game content initially
             modeSelectionDialog.classList.remove('hidden');
             gameContentWrapper.classList.add('hidden');
-            // resizeCanvas is called in initializeFullGame after mode is selected
         }
         document.addEventListener('DOMContentLoaded', init);
     </script>
