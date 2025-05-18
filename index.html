@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkyParcel Pioneers - Difficulty Modes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <style>
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background-color: #76b6db; 
+            color: #2c3e50; 
+            overscroll-behavior: none; 
+            margin: 0;
+            padding: 0;
+            display: flex; 
+            justify-content: center; 
+        }
+        .game-wrapper { 
+            display: flex;
+            flex-direction: column; 
+            width: 100%;
+            max-width: 1200px; 
+            padding: 5px;
+        }
+        .game-main-column {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .game-sidebar-column {
+            width: 100%; 
+            max-height: 80vh; 
+            overflow-y: auto;
+            padding: 5px;
+            background-color: rgba(230, 240, 255, 0.7); 
+            border-radius: 8px;
+            margin-top: 10px; 
+        }
+
+        @media (min-width: 768px) { 
+            .game-wrapper {
+                flex-direction: row;
+                align-items: flex-start; 
+            }
+            .game-main-column {
+                width: 65%; 
+                padding-right: 10px;
+            }
+            .game-sidebar-column {
+                width: 35%; 
+                margin-top: 0; 
+                position: sticky; 
+                top: 10px; 
+            }
+        }
+
+        canvas {
+            background-color: #a7dffc; 
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 600px; 
+            height: auto; 
+            aspect-ratio: 4 / 3; 
+            touch-action: none; 
+        }
+        .ui-panel {
+            background-color: rgba(255, 255, 255, 0.9); 
+            padding: 8px; 
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 8px; 
+            width: 100%;
+            max-width: 600px; 
+        }
+        .sidebar-panel { 
+            background-color: rgba(255, 255, 255, 0.95);
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 6px;
+        }
+
+        .item-entry { 
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            padding: 6px;
+            border-radius: 4px;
+            background-color: #f0f8ff; 
+            border: 1px solid #d0e0f0; 
+        }
+        .item-icon {
+            width: 32px; 
+            height: 32px;
+            margin-right: 10px;
+            border: 1px solid #aaa;
+            background-color: #ddd; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 4px; 
+            animation: bounce 2s infinite ease-in-out;
+        }
+        .icon-job { background-color: #FFD700; box-shadow: inset 0 0 0 2px #DAA520;}
+        .icon-ship { background-color: #B0C4DE;  box-shadow: inset 0 0 0 2px #778899;}
+        .icon-cannonball { background-color: #A9A9A9;  box-shadow: inset 0 0 0 2px #696969;}
+        .icon-cannonball-special { background-color: #FF6347; box-shadow: inset 0 0 0 2px #CD5C5C;}
+        .item-details { flex-grow: 1; }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-3px); }
+        }
+
+        .job-item.active-job { background-color: #ffeeb3; border-color: #ffc107; }
+        .shop-item.owned { background-color: #d4eed5; border-color: #a5d6a7; }
+        .shop-item.equipped { background-color: #badafb; border: 2px solid #6699bb; font-weight: bold; }
+        
+        button, .dialog-button, .control-button, .mode-button {
+            font-family: 'Press Start 2P', cursive;
+            background-color: #ff8c00; 
+            color: white;
+            padding: 7px 10px; 
+            border: none;
+            border-radius: 5px;
+            box-shadow: 2px 2px 0px #c66a00; 
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            margin-top: 4px; 
+            text-shadow: 1px 1px #8B4513; 
+            font-size: 0.7em; 
+        }
+        button:hover, .dialog-button:hover, .control-button:hover, .mode-button:hover {
+            background-color: #e07b00;
+        }
+        button:active, .dialog-button:active, .control-button:active, .mode-button:active {
+            transform: translateY(1px) translateX(1px);
+            box-shadow: 1px 1px 0px #c66a00;
+        }
+        #message-box {
+            min-height: 2.5em; 
+            background-color: #fffacd; 
+            border: 2px solid #f0e68c; 
+            color: #333;
+            font-size: 0.75em; 
+        }
+        #health-bar, #boss-health-bar { display: flex; gap: 2px; }
+        .heart { font-size: 1.3em; color: red; }
+        .heart.empty { color: #ccc; }
+        .boss-heart { font-size: 1.1em; color: purple; }
+        .boss-heart.empty { color: #ddd; }
+        
+        #villain-dialog, #game-over-dialog, #mode-selection-dialog {
+            position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(40, 40, 60, 0.97); 
+            color: #FFD700; padding: 15px; 
+            border: 3px solid #8B4513; border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.7); z-index: 1000;
+            width: 85%; max-width: 360px; 
+            text-align: center;
+        }
+        #villain-dialog p, #game-over-dialog p, #mode-selection-dialog p {
+            margin-bottom: 10px; font-size: 0.8em; line-height: 1.3;
+        }
+        .dialog-button { background-color: #A52A2A; box-shadow: 2px 2px 0px #5c1a1a; }
+        .dialog-button:hover { background-color: #8B0000; }
+        .control-button-panel { display: flex; justify-content: center; gap: 10px; margin-top: 6px;}
+        .mode-button {
+            padding: 10px 15px;
+            font-size: 0.8em;
+            margin: 5px;
+        }
+        .mode-button.normal { background-color: #4CAF50; box-shadow: 2px 2px 0px #388E3C;}
+        .mode-button.normal:hover { background-color: #43A047;}
+        .mode-button.hard { background-color: #f44336; box-shadow: 2px 2px 0px #D32F2F;}
+        .mode-button.hard:hover { background-color: #E53935;}
+
+
+        .game-content.hidden { display: none; } /* For hiding main game before mode selection */
+
+
+        @media (max-width: 767px) { 
+            .game-wrapper { padding: 5px; }
+            .ui-panel, #villain-dialog, #game-over-dialog, #mode-selection-dialog { padding: 8px; margin-bottom: 8px; }
+            h1 { font-size: 1rem; } 
+            h2 { font-size: 0.8rem; }
+            button, .dialog-button, .control-button, .mode-button { padding: 6px 10px; font-size: 0.65em;}
+            #villain-dialog p, #game-over-dialog p, #mode-selection-dialog p { font-size: 0.75em; }
+            #message-box { font-size: 0.7em; }
+            .heart { font-size: 1.1em; }
+            .boss-heart { font-size: 1em; }
+            .item-icon { width: 28px; height: 28px; margin-right: 8px;}
+            .game-sidebar-column { max-height: none; } 
+        }
+    </style>
+</head>
+<body class="select-none">
+    <div id="mode-selection-dialog">
+        <p class="text-lg mb-3">Select Difficulty</p>
+        <button id="normal-mode-btn" class="mode-button normal">Normal Mode</button>
+        <button id="hard-mode-btn" class="mode-button hard">Hard Mode</button>
+    </div>
+
+    <div class="game-wrapper game-content hidden"> <div class="game-main-column">
+            <header class="text-center my-2 sm:my-3">
+                <h1 class="text-lg sm:text-2xl font-bold text-white" style="text-shadow: 2px 2px #4a5568;">SkyParcel Pioneers</h1>
+            </header>
+
+            <div id="stats-panel" class="ui-panel text-xs sm:text-sm">
+                <div class="flex justify-between items-center mb-1">
+                    <p>SkyCoins: <span id="skycoins" class="font-bold">0</span></p>
+                    <div id="health-bar"></div>
+                </div>
+                <div class="flex justify-between items-center mb-1">
+                    <p>Airship: <span id="airship-type-display" class="font-bold">Pioneer</span></p>
+                    <p>Ammo: <span id="cannonball-count" class="font-bold">0</span></p>
+                </div>
+                 <p>Mode: <span id="game-mode-display" class="font-bold">N/A</span></p>
+                <p>Task: <span id="current-task" class="font-bold">None</span></p>
+                <div id="boss-health-container" class="mt-1 hidden">
+                    <p>Stormbeard's Hull: <span id="boss-health-bar"></span></p>
+                </div>
+            </div>
+
+            <div id="message-box" class="ui-panel text-center font-bold">
+                Select a difficulty to begin!
+            </div>
+
+            <canvas id="gameCanvas"></canvas>
+
+            <div class="control-button-panel ui-panel">
+                <button id="mute-music-btn" class="control-button">Mute Music</button>
+            </div>
+            <div id="controls-info" class="ui-panel text-center text-xs sm:text-sm">
+                Arrow Keys or WASD: Move | Spacebar: Fire Cannon
+            </div>
+        </div>
+
+        <div class="game-sidebar-column">
+            <div id="job-board" class="sidebar-panel w-full">
+                <h2 class="text-sm sm:text-lg font-bold mb-1 text-center">Job Board</h2>
+                <div id="job-list" class="space-y-1 max-h-48 sm:max-h-60 overflow-y-auto"></div>
+            </div>
+
+            <div id="airship-emporium" class="sidebar-panel w-full">
+                <h2 class="text-sm sm:text-lg font-bold mb-1 text-center">Airship Emporium</h2>
+                <div id="shop-list" class="space-y-1  max-h-48 sm:max-h-60 overflow-y-auto"></div>
+            </div>
+
+            <div id="celestial-armory" class="sidebar-panel w-full">
+                <h2 class="text-sm sm:text-lg font-bold mb-1 text-center">Celestial Armory</h2>
+                <div id="armory-list" class="space-y-1  max-h-48 sm:max-h-60 overflow-y-auto"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="villain-dialog" class="hidden">
+        <img id="villain-portrait" src="https://placehold.co/60x60/553322/FFFFFF?text=Pirate!" alt="Villain Portrait" class="mx-auto mb-2 rounded-full border-2 border-yellow-400">
+        <p id="villain-message"></p>
+        <button id="close-dialog-btn" class="dialog-button">Arr, Fine!</button>
+    </div>
+
+    <div id="game-over-dialog" class="hidden">
+        <p id="game-over-message" class="text-lg sm:text-xl mb-3">GAME OVER</p>
+        <button id="restart-game-btn" class="dialog-button">Restart Voyage</button>
+    </div>
+
+    <script>
+        // --- Game Setup ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // UI Elements
+        const skycoinsDisplay = document.getElementById('skycoins');
+        const currentTaskDisplay = document.getElementById('current-task');
+        const airshipTypeDisplay = document.getElementById('airship-type-display');
+        const cannonballCountDisplay = document.getElementById('cannonball-count');
+        const messageBox = document.getElementById('message-box');
+        const jobListDiv = document.getElementById('job-list');
+        const shopListDiv = document.getElementById('shop-list');
+        const armoryListDiv = document.getElementById('armory-list');
+        const healthBarDiv = document.getElementById('health-bar');
+        const bossHealthContainer = document.getElementById('boss-health-container');
+        const bossHealthBarDiv = document.getElementById('boss-health-bar');
+        const villainDialog = document.getElementById('villain-dialog');
+        const villainMessage = document.getElementById('villain-message');
+        const villainPortrait = document.getElementById('villain-portrait');
+        const closeDialogBtn = document.getElementById('close-dialog-btn');
+        const gameOverDialog = document.getElementById('game-over-dialog');
+        const restartGameBtn = document.getElementById('restart-game-btn');
+        const muteMusicBtn = document.getElementById('mute-music-btn');
+        const modeSelectionDialog = document.getElementById('mode-selection-dialog');
+        const normalModeBtn = document.getElementById('normal-mode-btn');
+        const hardModeBtn = document.getElementById('hard-mode-btn');
+        const gameContentWrapper = document.querySelector('.game-wrapper.game-content');
+        const gameModeDisplay = document.getElementById('game-mode-display');
+
+
+        // Sound Synthesis (Tone.js) - Single theme song
+        let pickupSound, deliverSound, errorSound, stormSound, damageSound, 
+            pirateAppearSound, pirateStealSound, pirateHitSound, pirateDefeatSound,
+            bossAppearSound, bossHitSound, bossDefeatSound, cannonFireSound, specialCannonHitSound,
+            melodySynth, bassSynth, themeMelody, bassLoop;
+        let musicMuted = false;
+
+        if (typeof Tone !== 'undefined') {
+            pickupSound = new Tone.Synth({ oscillator: { type: "sine" }, envelope: { attack: 0.01, decay: 0.1, sustain: 0.05, release: 0.2 }, volume: -12 }).toDestination();
+            deliverSound = new Tone.Synth({ oscillator: { type: "triangle" }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.3 }, volume: -10 }).toDestination();
+            errorSound = new Tone.Synth({ oscillator: { type: "square" }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.01, release: 0.1 }, volume: -15 }).toDestination();
+            stormSound = new Tone.NoiseSynth({ noise: { type: 'pink' }, envelope: { attack: 0.2, decay: 0.5, sustain: 0.1, release: 0.3 }, volume: -20 }).toDestination();
+            damageSound = new Tone.Synth({ oscillator: { type: "sawtooth" }, envelope: { attack: 0.005, decay: 0.1, sustain: 0, release: 0.1 }, volume: -10 }).toDestination();
+            cannonFireSound = new Tone.MembraneSynth({ pitchDecay: 0.02, octaves: 8, oscillator: { type: "sine" }, envelope: { attack: 0.005, decay: 0.2, sustain: 0.01, release: 0.3 }, volume: -8 }).toDestination();
+            pirateAppearSound = new Tone.PolySynth(Tone.Synth, { oscillator: { type: "sawtooth" }, envelope: { attack: 0.01, decay: 0.3, sustain: 0.05, release: 0.2 }, volume: -15 }).toDestination();
+            pirateStealSound = new Tone.MembraneSynth({ pitchDecay: 0.08, octaves: 5, envelope: { attack: 0.01, decay: 0.5, sustain: 0.01, release: 0.8 }, volume: -8 }).toDestination();
+            pirateHitSound = new Tone.MetalSynth({ frequency: 150, envelope: { attack: 0.01, decay: 0.1, release: 0.05 }, harmonicity: 3.1, modulationIndex: 16, resonance: 2000, octaves: 0.5, volume: -12 }).toDestination();
+            pirateDefeatSound = new Tone.Synth({ oscillator: {type: "fmsquare", modulationType : "triangle", modulationIndex: 2, harmonicity: 0.8}, envelope: {attack: 0.01, decay: 0.3, sustain: 0, release: 0.2}, volume: -10}).toDestination();
+            bossAppearSound = new Tone.PolySynth(Tone.Synth, { oscillator: { type: "pwm", modulationFrequency: 0.5 }, envelope: { attack: 0.05, decay: 0.8, sustain: 0.1, release: 0.5 }, volume: -10 }).toDestination();
+            bossHitSound = new Tone.MetalSynth({ frequency: 100, envelope: { attack: 0.01, decay: 0.2, release: 0.1 }, harmonicity: 4.1, modulationIndex: 22, resonance: 1500, octaves: 0.8, volume: -9 }).toDestination();
+            bossDefeatSound = new Tone.Synth({ oscillator: { type: "pulse", width: 0.6 }, envelope: { attack: 0.01, decay: 0.5, sustain: 0.2, release: 1.0 }, volume: -5 }).toDestination(); 
+            specialCannonHitSound = new Tone.Synth({ oscillator: { type: "fatsawtooth", count: 3, spread: 30 }, envelope: { attack: 0.01, decay: 0.3, sustain: 0.05, release: 0.2 }, volume: -7 }).toDestination();
+            melodySynth = new Tone.Synth({ oscillator: { type: 'pulse', width: 0.4 }, envelope: { attack: 0.01, decay: 0.15, sustain: 0.05, release: 0.2 }, volume: -24 }).toDestination();
+            bassSynth = new Tone.Synth({ oscillator: { type: 'fatsine', count: 2, spread: 10 }, envelope: { attack: 0.02, decay: 0.3, sustain: 0.1, release: 0.3 }, volume: -28 }).toDestination();
+            const melodyNotes = ["C4", "E4", "G4", "C5", "A4", "G4", "E4", null]; 
+            themeMelody = new Tone.Sequence((time, note) => { if (note) melodySynth.triggerAttackRelease(note, "8n", time); }, melodyNotes, "8n"); 
+            themeMelody.loop = true; 
+            bassLoop = new Tone.Loop(time => { bassSynth.triggerAttackRelease("C2", "2n", time); bassSynth.triggerAttackRelease("G1", "2n", time + Tone.Time("2n").toSeconds()); }, "1m"); 
+            bassLoop.loop = true;
+            Tone.Transport.bpm.value = 125; 
+        } else { 
+            console.warn("Tone.js not loaded. Sound effects will be disabled.");
+            const dummySound = { triggerAttackRelease: () => {}, triggerAttack: () => {}, triggerRelease: () => {}, start: () => {}, stop: () => {} };
+            pickupSound = deliverSound = errorSound = stormSound = damageSound = cannonFireSound = dummySound;
+            pirateAppearSound = pirateStealSound = pirateHitSound = pirateDefeatSound = dummySound;
+            bossAppearSound = bossHitSound = bossDefeatSound = specialCannonHitSound = dummySound;
+            themeMelody = bassLoop = dummySound; 
+        }
+
+        // Game State
+        let gameMode = null; // 'normal' or 'hard'
+        let skyCoins = 0;
+        const airshipTypes = { 
+            pioneer: { name: "Pioneer", color: '#FF6347', speed: 2.5, maxHealth: 10, cost: 0, owned: true },
+            guardian: { name: "Guardian Hauler", color: '#4682B4', speed: 2.0, maxHealth: 14, cost: 250, owned: false },
+            sprinter: { name: "Sky Sprinter", color: '#32CD32', speed: 3.2, maxHealth: 10, cost: 300, owned: false }
+        };
+        let player = {
+            x: 50, y: 50, width: 30, height: 20, 
+            currentAirship: 'pioneer', speed: airshipTypes.pioneer.speed, baseSpeed: airshipTypes.pioneer.speed, 
+            color: airshipTypes.pioneer.color, health: airshipTypes.pioneer.maxHealth, maxHealth: airshipTypes.pioneer.maxHealth,
+            ammoBelt: [], 
+            dx: 0, dy: 0, currentJobId: null, hasPackage: false, packageDetails: null,
+            inStorm: false, stormSoundPlaying: false, lastShotTime: 0, shootCooldown: 500,
+            lastNonZeroDx: 1, lastNonZeroDy: 0,
+            lastContactDamageTime: 0, contactDamageCooldown: 1500 // For Hard mode pirate collision
+        };
+        const cannonballTypes = {
+            regular: { name: "Cannonball", cost: 200, damage: 1, iconClass: "icon-cannonball" },
+            special: { name: "Thunderball", cost: 400, damage: 2, iconClass: "icon-cannonball-special" }
+        };
+        const islands = [ 
+            { id: 'A', name: 'Aeria Start', x: 100, y: 100, radius: 30, color: '#8FBC8F' },
+            { id: 'B', name: 'Cloudcroft', x: 0, y: 0, radius: 35, color: '#ADD8E6' }, 
+            { id: 'C', name: 'Windpeak', x: 150, y: 0, radius: 40, color: '#D2B48C' }, 
+            { id: 'D', name: 'Sunspire', x: 0, y: 0, radius: 25, color: '#FFD700' }, 
+            { id: 'E', name: 'Misty Isle', x: 0, y: 0, radius: 33, color: '#B0C4DE' }, 
+            { id: 'F', name: 'Glimmerock', x: 0, y: 0, radius: 28, color: '#778899' } 
+        ];
+        let obstacles = [ 
+             { id: 'S1', type: 'storm', x: 0, y: 0, radius: 50, color: 'rgba(100, 100, 120, 0.6)', dx: 0, dy: 0, moveAccumulator: {x:0, y:0} },
+            { id: 'S2', type: 'storm', x: 0, y: 0, radius: 40, color: 'rgba(100, 100, 120, 0.6)', dx: 0, dy: 0, moveAccumulator: {x:0, y:0} },
+            { id: 'S3', type: 'storm', x: 0, y: 0, radius: 45, color: 'rgba(100, 100, 120, 0.6)', dx: 0, dy: 0, moveAccumulator: {x:0, y:0} }
+        ];
+        let projectiles = [];
+        const projectileSpeed = 5; const projectileRadius = 4;
+        let villain = { 
+            type: 'regular', x: -100, y: -100, width: 35, height: 25, speed: 1.5, color: '#6A0DAD', 
+            active: false, message: '', health: 1, maxHealth: 1,
+            appearanceChance: 0.0015, 
+            dialogMessages: [ "Arr, that's a fine lookin' parcel you got there!", "Hand over the goods, sky-lubber!", "Ye think ye can outfly Captain Pegleg Pete? Think again!", "This here's Pirate territory! Toll is one package!" ],
+            portraitUrl: "https://placehold.co/70x70/553322/FFFFFF?text=Pete!"
+        };
+        let bossVillain = { 
+            type: 'boss', x: -100, y: -100, width: 50, height: 35, speed: 1.2, color: '#8B0000', 
+            active: false, message: '', health: 5, maxHealth: 5,
+            appearanceThresholdSC: 1000, appearanceChance: 0.002, 
+            dialogMessages: [ "Ye dare sail these skies with such riches? Stormbeard claims his due!", "Your treasure will line my coffers, whelp!", "Feel the wrath of the Sky Terror! None escape Stormbeard!", "That shiny ship of yours will make a fine addition to my fleet... after I sink it!" ],
+            portraitUrl: "https://placehold.co/70x70/4B0082/FFD700?text=BOSS!"
+        };
+        let currentPirate = null; 
+        let jobs = []; let nextJobId = 1; const MAX_JOBS = 5;
+        let gamePaused = false; let gameOverState = false;
+        const keys = { 
+            ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, 
+            KeyW: false, KeyS: false, KeyA: false, KeyD: false, 
+            Space: false 
+        };
+
+        // --- Game Mode Selection ---
+        function selectGameMode(selectedMode) {
+            gameMode = selectedMode;
+            gameModeDisplay.textContent = gameMode.charAt(0).toUpperCase() + gameMode.slice(1); // Capitalize
+            modeSelectionDialog.classList.add('hidden');
+            gameContentWrapper.classList.remove('hidden');
+            initializeFullGame(); // New function to start the game after mode selection
+        }
+
+        normalModeBtn.addEventListener('click', () => selectGameMode('normal'));
+        hardModeBtn.addEventListener('click', () => selectGameMode('hard'));
+
+
+        // --- Game Logic ---
+        function initializeFullGame() {
+            resizeCanvas(); 
+            resetGame(); 
+
+            const startAudioContext = async () => { 
+                if (typeof Tone !== 'undefined' && Tone.context.state !== 'running') {
+                    try { 
+                        await Tone.start(); console.log("Audio context started");
+                        if (!musicMuted && Tone.Transport.state !== "started") { 
+                            Tone.Transport.start(); 
+                            if(themeMelody && themeMelody.state !== "started") themeMelody.start(0);
+                            if(bassLoop && bassLoop.state !== "started") bassLoop.start(0);
+                        }
+                    }
+                    catch (e) { console.error("Failed to start audio context:", e); }
+                }
+            };
+            // Audio context might have already been started by mode selection click, but good to have.
+            if (Tone.context.state !== 'running') {
+                 ['click', 'keydown', 'touchstart'].forEach(eventType => {
+                    document.body.addEventListener(eventType, startAudioContext, { once: true });
+                });
+            } else { // If already running, just ensure music starts if not muted
+                 if (!musicMuted && Tone.Transport.state !== "started" && typeof Tone !== 'undefined') { 
+                    Tone.Transport.start(); 
+                    if(themeMelody && themeMelody.state !== "started") themeMelody.start(0);
+                    if(bassLoop && bassLoop.state !== "started") bassLoop.start(0);
+                }
+            }
+            
+            updateHealthBar(); updateCannonballDisplay(); displayShopItems(); displayArmoryItems();
+            airshipTypeDisplay.textContent = airshipTypes[player.currentAirship].name;
+            showMessage("Watch out for Storms and Sky Pirates, Pioneer! Press Space to fire cannons.");
+            if (!gameOverState) requestAnimationFrame(gameLoop); 
+        }
+
+
+        function resetGame() { 
+            skyCoins = 0;
+            player.x = 50; player.y = 50;
+            player.ammoBelt = ['regular', 'regular', 'regular', 'regular', 'regular']; 
+            player.currentAirship = 'pioneer';
+            equipAirship('pioneer', false); 
+            player.currentJobId = null; player.hasPackage = false; player.packageDetails = null;
+            player.inStorm = false; player.stormSoundPlaying = false;
+            player.lastNonZeroDx = 1; player.lastNonZeroDy = 0; 
+            player.lastContactDamageTime = 0; // Reset contact damage timer
+            
+            villain.active = false; villain.x = -100; villain.y = -100; villain.health = villain.maxHealth;
+            bossVillain.active = false; bossVillain.x = -100; bossVillain.y = -100; bossVillain.health = bossVillain.maxHealth;
+            currentPirate = null;
+            bossHealthContainer.classList.add('hidden');
+
+            projectiles = []; 
+            jobs = []; nextJobId = 1;
+            for (let i = 0; i < 3; i++) generateJob();
+            
+            gameOverState = false; gamePaused = false;
+            gameOverDialog.classList.add('hidden');
+            
+            updateSkyCoinsDisplay(); updateHealthBar(); updateCannonballDisplay();
+            updateCurrentTaskDisplay(); displayJobs(); displayShopItems(); displayArmoryItems();
+            if (gameMode) showMessage("A new voyage begins! Good luck, Pioneer!"); // Only if mode selected
+            
+            if (!musicMuted && Tone.Transport.state !== "started" && typeof Tone !== 'undefined' && gameMode) { // Ensure gameMode is set
+                 Tone.Transport.start(); 
+                 if(themeMelody && themeMelody.state !== "started") themeMelody.start(0);
+                 if(bassLoop && bassLoop.state !== "started") bassLoop.start(0);
+            }
+        }
+        
+        function resizeCanvas() { 
+            const style = getComputedStyle(canvas);
+            const newWidth = parseFloat(style.width);
+            canvas.width = newWidth;
+            canvas.height = newWidth / (4/3); 
+            
+            islands[1].x = canvas.width * 0.75; islands[1].y = canvas.height * 0.2;
+            islands[2].x = canvas.width * 0.25; islands[2].y = canvas.height * 0.7; 
+            islands[3].x = canvas.width * 0.8; islands[3].y = canvas.height * 0.65;
+            islands[4].x = canvas.width * 0.4; islands[4].y = canvas.height * 0.5; 
+            islands[5].x = canvas.width * 0.65; islands[5].y = canvas.height * 0.8; 
+
+            obstacles[0].x = canvas.width * 0.5; obstacles[0].y = canvas.height * 0.5;
+            obstacles[1].x = canvas.width * 0.2; obstacles[1].y = canvas.height * 0.8;
+            obstacles[2].x = canvas.width * 0.85; obstacles[2].y = canvas.height * 0.35;
+
+            if(ctx && gameMode) draw(); // Only draw if game has started
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        function generateJob() { 
+            if (jobs.filter(job => !job.completed).length >= MAX_JOBS) return;
+            let fromIsland, toIsland;
+            do {
+                fromIsland = islands[Math.floor(Math.random() * islands.length)];
+                toIsland = islands[Math.floor(Math.random() * islands.length)];
+            } while (fromIsland.id === toIsland.id);
+            const packageName = `Goods for ${toIsland.name}`;
+            const reward = Math.floor(Math.random() * 80) + 40; 
+            const newJob = {
+                id: nextJobId++, fromIslandId: fromIsland.id, toIslandId: toIsland.id,
+                fromIslandName: fromIsland.name, toIslandName: toIsland.name,
+                packageName: packageName, reward: reward,
+                accepted: false, pickedUp: false, delivered: false, completed: false
+            };
+            jobs.push(newJob);
+        }
+
+        function displayJobs() {
+            jobListDiv.innerHTML = '';
+            const activeJobs = jobs.filter(job => !job.completed);
+            if (activeJobs.length === 0) {
+                jobListDiv.innerHTML = '<p class="text-center text-gray-500 text-xs">No jobs available.</p>';
+            }
+            activeJobs.forEach(job => {
+                const jobEntry = document.createElement('div');
+                jobEntry.classList.add('item-entry');
+                if (job.id === player.currentJobId) jobEntry.classList.add('active-job');
+                
+                jobEntry.innerHTML = `
+                    <div class="item-icon icon-job"></div>
+                    <div class="item-details text-xs">
+                        <p class="font-bold">Job #${job.id}: ${job.packageName}</p>
+                        <p>From: ${job.fromIslandName} To: ${job.toIslandName}</p>
+                        <p>Reward: ${job.reward} SkyCoins</p>
+                        ${!job.accepted ? `<button data-job-id="${job.id}" class="accept-btn">Accept</button>` : ''}
+                    </div>
+                `; 
+                jobListDiv.appendChild(jobEntry);
+            });
+            document.querySelectorAll('.accept-btn').forEach(button => {
+                button.addEventListener('click', (e) => acceptJob(parseInt(e.target.dataset.jobId)));
+            });
+        }
+        
+        function acceptJob(jobId) { 
+            if (player.currentJobId && jobs.find(j => j.id === player.currentJobId && !j.completed)) {
+                showMessage("Complete your current job first, matey!");
+                try { errorSound.triggerAttackRelease("C3", "0.2s"); } catch(e) { console.error("Sound error:", e); }
+                return;
+            }
+            const job = jobs.find(j => j.id === jobId);
+            if (job && !job.accepted) {
+                job.accepted = true; player.currentJobId = jobId; player.hasPackage = false; player.packageDetails = null;
+                showMessage(`Job #${job.id} accepted! Pick up from ${job.fromIslandName}.`);
+                try { pickupSound.triggerAttackRelease("C4", "0.1s", Tone.now() + 0.05); } catch(e) { console.error("Sound error:", e); }
+                updateCurrentTaskDisplay(); displayJobs();
+            }
+        }
+
+        function updateObstaclesOnPlayerMove(playerDx, playerDy) { 
+            obstacles.forEach(obstacle => {
+                if (obstacle.type === 'storm') {
+                    obstacle.dx = (Math.random() - 0.5) * 0.3; 
+                    obstacle.dy = (Math.random() - 0.5) * 0.3; 
+                    obstacle.x += obstacle.dx; obstacle.y += obstacle.dy;
+                    if (obstacle.x < -obstacle.radius) obstacle.x = canvas.width + obstacle.radius;
+                    if (obstacle.x > canvas.width + obstacle.radius) obstacle.x = -obstacle.radius;
+                    if (obstacle.y < -obstacle.radius) obstacle.y = canvas.height + obstacle.radius;
+                    if (obstacle.y > canvas.height + obstacle.radius) obstacle.y = -obstacle.radius;
+                }
+            });
+        }
+
+        function checkPlayerObstacleInteraction() { 
+            player.inStorm = false; 
+            obstacles.forEach(obstacle => {
+                if (obstacle.type === 'storm') {
+                    const dist = Math.sqrt((player.x + player.width/2 - obstacle.x)**2 + (player.y + player.height/2 - obstacle.y)**2);
+                    if (dist < obstacle.radius * 0.8 + Math.max(player.width, player.height) / 3) { 
+                        player.inStorm = true;
+                        if (!obstacle.recentlyHitPlayer) {
+                            player.health -= 1; 
+                            updateHealthBar();
+                            showMessage("Hit by storm! Lost half a heart!");
+                            try { damageSound.triggerAttackRelease("A2", "0.1s"); } catch(e) { console.error("Sound error:", e); }
+                            obstacle.recentlyHitPlayer = true; 
+                            setTimeout(() => { obstacle.recentlyHitPlayer = false; }, 1000); 
+                            if (player.health <= 0) triggerGameOver("Lost in the raging storm!");
+                        }
+                        if (!player.stormSoundPlaying) {
+                           try { if (stormSound.state !== "started") stormSound.triggerAttackRelease("8n"); } catch(e){ console.error("Storm sound error", e); }
+                           player.stormSoundPlaying = true;
+                        }
+                    } else if (dist > obstacle.radius + player.width) { 
+                        if (player.stormSoundPlaying) player.stormSoundPlaying = false; 
+                        obstacle.recentlyHitPlayer = false; 
+                    }
+                }
+            });
+        }
+
+        function checkInteractions() { 
+            const currentJob = jobs.find(job => job.id === player.currentJobId && job.accepted && !job.delivered);
+            if (!currentJob) return;
+
+            islands.forEach(island => {
+                const dist = Math.sqrt((player.x + player.width/2 - island.x)**2 + (player.y + player.height/2 - island.y)**2);
+                if (dist < island.radius + Math.max(player.width, player.height) / 2) {
+                    if (island.id === currentJob.fromIslandId && !currentJob.pickedUp) {
+                        currentJob.pickedUp = true; player.hasPackage = true;
+                        player.packageDetails = { name: currentJob.packageName, toIslandId: currentJob.toIslandId };
+                        showMessage(`Picked up ${currentJob.packageName}! Deliver to ${currentJob.toIslandName}.`);
+                        try { pickupSound.triggerAttackRelease("E4", "0.1s", Tone.now() + 0.05); } catch(e) { console.error("Sound error:", e); }
+                        updateCurrentTaskDisplay(); displayJobs();
+                    } else if (island.id === currentJob.toIslandId && currentJob.pickedUp) {
+                        currentJob.delivered = true; currentJob.completed = true;
+                        player.hasPackage = false; player.packageDetails = null; player.currentJobId = null;
+                        skyCoins += currentJob.reward; updateSkyCoinsDisplay();
+                        showMessage(`Delivered ${currentJob.packageName} to ${island.name}! +${currentJob.reward} SkyCoins.`);
+                        try { deliverSound.triggerAttackRelease("G4", "0.3s", Tone.now() + 0.05); } catch(e) { console.error("Sound error:", e); }
+                        updateCurrentTaskDisplay(); displayJobs(); generateJob();
+                    }
+                }
+            });
+        }
+        
+        function fireCannonball() {
+            const currentTime = Date.now();
+            if (player.ammoBelt.length > 0 && currentTime - player.lastShotTime > player.shootCooldown) {
+                const ammoTypeId = player.ammoBelt.shift(); 
+                const ammoDetails = cannonballTypes[ammoTypeId];
+
+                player.lastShotTime = currentTime;
+                updateCannonballDisplay(); 
+                try { cannonFireSound.triggerAttackRelease("C3", "0.2s"); } catch(e) { console.error("Sound error:", e); }
+
+                let velX = player.dx !== 0 ? Math.sign(player.dx) * projectileSpeed : (keys.ArrowRight || keys.KeyD ? 1 : (keys.ArrowLeft || keys.KeyA ? -1 : 0)) * projectileSpeed;
+                let velY = player.dy !== 0 ? Math.sign(player.dy) * projectileSpeed : (keys.ArrowDown || keys.KeyS ? 1 : (keys.ArrowUp || keys.KeyW ? -1 : 0)) * projectileSpeed;
+                
+                if (velX === 0 && velY === 0) { 
+                    if (player.lastNonZeroDx !== 0) { 
+                        velX = Math.sign(player.lastNonZeroDx) * projectileSpeed;
+                        velY = 0; 
+                    } else if (player.lastNonZeroDy !== 0) { 
+                        velY = Math.sign(player.lastNonZeroDy) * projectileSpeed;
+                        velX = 0;
+                    } else { 
+                        velX = projectileSpeed; 
+                        velY = 0;
+                    }
+                }
+                
+                if (velX !== 0 && velY !== 0) { const factor = Math.sqrt(2); velX /= factor; velY /= factor; }
+
+                projectiles.push({
+                    x: player.x + player.width / 2 - projectileRadius,
+                    y: player.y + player.height / 2 - projectileRadius,
+                    radius: projectileRadius,
+                    color: ammoTypeId === 'special' ? '#FF4500' : '#333333', 
+                    dx: velX, dy: velY,
+                    damage: ammoDetails.damage 
+                });
+            } else if (player.ammoBelt.length <= 0) {
+                showMessage("Out of ammo! Visit the Armory.");
+                try { errorSound.triggerAttackRelease("A2", "0.2s"); } catch(e) { console.error("Sound error:", e); }
+            }
+        }
+
+        function updateProjectiles() {
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const p = projectiles[i];
+                p.x += p.dx;
+                p.y += p.dy;
+
+                if (p.x < 0 || p.x > canvas.width || p.y < 0 || p.y > canvas.height) {
+                    projectiles.splice(i, 1); continue;
+                }
+
+                if (currentPirate && currentPirate.active) {
+                    const dist = Math.sqrt((p.x + p.radius - (currentPirate.x + currentPirate.width/2))**2 + 
+                                         (p.y + p.radius - (currentPirate.y + currentPirate.height/2))**2);
+                    if (dist < Math.max(currentPirate.width, currentPirate.height) / 2 + p.radius) {
+                        projectiles.splice(i, 1); 
+                        currentPirate.health -= p.damage; 
+                        
+                        if (currentPirate.type === 'boss') {
+                            updateBossHealthBar();
+                            try { p.damage > 1 ? specialCannonHitSound.triggerAttackRelease("F#2", "0.25s") : bossHitSound.triggerAttackRelease("G2", "0.2s"); } catch(e) { console.error("Sound error:", e); }
+                        } else {
+                            try { p.damage > 1 ? specialCannonHitSound.triggerAttackRelease("B3", "0.15s") : pirateHitSound.triggerAttackRelease("A3", "0.1s"); } catch(e) { console.error("Sound error:", e); }
+                        }
+
+                        if (currentPirate.health <= 0) {
+                            showMessage(`You defeated ${currentPirate.type === 'boss' ? 'Dread Pirate Stormbeard' : 'Captain Pegleg Pete'}!`);
+                            if (currentPirate.type === 'boss') {
+                                skyCoins += 500; updateSkyCoinsDisplay();
+                                try { bossDefeatSound.triggerAttackRelease("C5", "1s"); } catch(e) { console.error("Sound error:", e); }
+                                bossHealthContainer.classList.add('hidden');
+                            } else {
+                                skyCoins += 50; updateSkyCoinsDisplay();
+                                try { pirateDefeatSound.triggerAttackRelease("E4", "0.5s"); } catch(e) { console.error("Sound error:", e); }
+                            }
+                            currentPirate.active = false; currentPirate.x = -200; currentPirate.y = -200; 
+                            currentPirate = null; hideVillainDialog(); 
+                        }
+                        break; 
+                    }
+                }
+            }
+        }
+
+        function updatePirateLogic() { 
+            if (gameOverState) { 
+                if (currentPirate) currentPirate.active = false;
+                villain.active = false; bossVillain.active = false;
+                currentPirate = null; bossHealthContainer.classList.add('hidden');
+                hideVillainDialog(); return;
+            }
+            if (currentPirate && currentPirate.active) {
+                const pirateToUpdate = currentPirate;
+                const angle = Math.atan2(player.y - pirateToUpdate.y, player.x - pirateToUpdate.x);
+                pirateToUpdate.x += Math.cos(angle) * pirateToUpdate.speed;
+                pirateToUpdate.y += Math.sin(angle) * pirateToUpdate.speed;
+                const dist = Math.sqrt((player.x + player.width/2 - (pirateToUpdate.x + pirateToUpdate.width/2))**2 + 
+                                     (player.y + player.height/2 - (pirateToUpdate.y + pirateToUpdate.height/2))**2);
+                
+                // Hard Mode: Pirate Contact Damage
+                const currentTime = Date.now();
+                if (gameMode === 'hard' && dist < (player.width + pirateToUpdate.width) / 2 && 
+                    (currentTime - player.lastContactDamageTime > player.contactDamageCooldown)) {
+                    
+                    player.health -= 1; // Half a heart
+                    player.lastContactDamageTime = currentTime;
+                    updateHealthBar();
+                    showMessage(`Ouch! Pirate collision in Hard Mode!`);
+                    try { damageSound.triggerAttackRelease("A2", "0.1s"); } catch(e) {console.error("Damage sound error:", e);}
+                    
+                    if (player.health <= 0) {
+                        triggerGameOver("Crashed into a pirate!");
+                        return; 
+                    }
+                }
+                
+                // Package Stealing Logic (applies to both modes if contact is made)
+                if (dist < (player.width + pirateToUpdate.width) / 2 && player.hasPackage) {
+                    const currentJob = jobs.find(job => job.id === player.currentJobId);
+                    if (currentJob) {
+                        let stolenMessage = "";
+                        if (pirateToUpdate.type === 'boss') {
+                            stolenMessage = `Dread Pirate Stormbeard plundered ALL your ${skyCoins} SkyCoins and the ${currentJob.packageName}!`;
+                            skyCoins = 0; 
+                            try { pirateStealSound.triggerAttackRelease("A1", "1s"); } catch(e) { console.error("Sound error:", e); } 
+                        } else {
+                            stolenMessage = `Captain Pegleg Pete stole your ${currentJob.packageName}!`;
+                            try { pirateStealSound.triggerAttackRelease("C2", "0.8s"); } catch(e) { console.error("Sound error:", e); }
+                        }
+                        showMessage(stolenMessage); updateSkyCoinsDisplay();
+                        currentJob.completed = true; currentJob.delivered = false; 
+                        player.hasPackage = false; player.packageDetails = null; player.currentJobId = null;
+                        pirateToUpdate.active = false; pirateToUpdate.x = -200; pirateToUpdate.y = -200; 
+                        currentPirate = null;
+                        if (pirateToUpdate.type === 'boss') bossHealthContainer.classList.add('hidden');
+                        updateCurrentTaskDisplay(); displayJobs(); generateJob(); hideVillainDialog(); 
+                    }
+                }
+            } else { 
+                let pirateToSpawn = null;
+                if (skyCoins >= bossVillain.appearanceThresholdSC && Math.random() < bossVillain.appearanceChance) {
+                    pirateToSpawn = bossVillain;
+                } else if (Math.random() < villain.appearanceChance) {
+                    pirateToSpawn = villain;
+                }
+                if (pirateToSpawn && player.hasPackage) { 
+                    currentPirate = pirateToSpawn; currentPirate.active = true;
+                    currentPirate.health = currentPirate.maxHealth; 
+                    const edge = Math.floor(Math.random() * 4);
+                    if (edge === 0) { currentPirate.x = -currentPirate.width; currentPirate.y = Math.random() * canvas.height; }
+                    else if (edge === 1) { currentPirate.x = canvas.width; currentPirate.y = Math.random() * canvas.height; }
+                    else if (edge === 2) { currentPirate.y = -currentPirate.height; currentPirate.x = Math.random() * canvas.width; }
+                    else { currentPirate.y = canvas.height; currentPirate.x = Math.random() * canvas.width; }
+                    const pirateMsg = currentPirate.dialogMessages[Math.floor(Math.random() * currentPirate.dialogMessages.length)];
+                    villainPortrait.src = currentPirate.portraitUrl + `&cachebust=${Date.now()}`;
+                    showVillainDialog(pirateMsg);
+                    if (currentPirate.type === 'boss') {
+                        try { bossAppearSound.triggerAttackRelease(["A2", "D3", "F#2"], "0.8s"); } catch(e) { console.error("Sound error:", e); }
+                        updateBossHealthBar(); bossHealthContainer.classList.remove('hidden');
+                    } else {
+                        try { pirateAppearSound.triggerAttackRelease(["C3", "E3", "G2"], "0.5s"); } catch(e) { console.error("Sound error:", e); }
+                    }
+                }
+            }
+        }
+        
+        function updatePlayer() {
+            if (gamePaused || gameOverState) return;
+            
+            let moved = false;
+            player.dx = 0; player.dy = 0;
+
+            if (keys.ArrowUp || keys.KeyW) { player.dy = -player.speed; moved = true; }
+            if (keys.ArrowDown || keys.KeyS) { player.dy = player.speed; moved = true; }
+            if (keys.ArrowLeft || keys.KeyA) { player.dx = -player.speed; moved = true; }
+            if (keys.ArrowRight || keys.KeyD) { player.dx = player.speed; moved = true; }
+
+            if (keys.Space) { fireCannonball(); keys.Space = false; }
+
+            if (player.dx !== 0) player.lastNonZeroDx = player.dx; else if (!moved && player.dx === 0) player.lastNonZeroDx = 0; 
+            if (player.dy !== 0) player.lastNonZeroDy = player.dy; else if (!moved && player.dy === 0) player.lastNonZeroDy = 0;
+
+
+            let currentFrameDx = player.dx;
+            let currentFrameDy = player.dy;
+
+            if (currentFrameDx !== 0 && currentFrameDy !== 0) { 
+                const factor = Math.sqrt(2); 
+                currentFrameDx /= factor; 
+                currentFrameDy /= factor; 
+            }
+            player.x += currentFrameDx; 
+            player.y += currentFrameDy;
+
+            player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
+            player.y = Math.max(0, Math.min(canvas.height - player.height, player.y));
+            
+            if (moved) { updateObstaclesOnPlayerMove(currentFrameDx, currentFrameDy); }
+            checkPlayerObstacleInteraction(); checkInteractions();
+        }
+
+        // --- Drawing ---
+        function drawPlayer(ctx) { 
+            const detailColor = '#A9A9A9';
+            ctx.fillStyle = player.color; 
+            ctx.beginPath();
+            ctx.ellipse(player.x + player.width / 2, player.y + player.height / 2, player.width / 2, player.height / 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = detailColor;
+            ctx.fillRect(player.x + player.width * 0.25, player.y - player.height * 0.1, player.width * 0.5, player.height * 0.4);
+            ctx.strokeStyle = '#555555'; ctx.lineWidth = 2; ctx.beginPath();
+            ctx.moveTo(player.x - 5, player.y + player.height / 2 - 5); ctx.lineTo(player.x + 5, player.y + player.height / 2 + 5);
+            ctx.moveTo(player.x - 5, player.y + player.height / 2 + 5); ctx.lineTo(player.x + 5, player.y + player.height / 2 - 5);
+            ctx.stroke();
+            if (player.hasPackage && player.packageDetails) {
+                ctx.fillStyle = '#8B4513';
+                ctx.fillRect(player.x + player.width / 2 - 5, player.y + player.height / 2 - 5, 10, 10);
+                ctx.strokeStyle = '#000';
+                ctx.strokeRect(player.x + player.width / 2 - 5, player.y + player.height / 2 - 5, 10, 10);
+            }
+            if (player.inStorm && Math.floor(Date.now() / 200) % 2 === 0) { 
+                ctx.fillStyle = "rgba(200, 200, 255, 0.3)";
+                ctx.beginPath();
+                ctx.ellipse(player.x + player.width / 2, player.y + player.height / 2, player.width, player.height, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        function drawIslands(ctx) { 
+            islands.forEach(island => {
+                ctx.fillStyle = island.color; ctx.beginPath();
+                ctx.arc(island.x, island.y, island.radius, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; ctx.beginPath();
+                ctx.arc(island.x + 5, island.y + 5, island.radius, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#FFFFFF'; ctx.font = '8px "Press Start 2P"'; ctx.textAlign = 'center';
+                ctx.fillText(island.name, island.x, island.y + island.radius + 10);
+            });
+        }
+        function drawClouds(ctx) { 
+             const cloudPositions = [ 
+                { x: canvas.width*0.1, y: canvas.height*0.3, r1: 20, r2: 25, r3: 18 }, { x: canvas.width*0.4, y: canvas.height*0.1, r1: 30, r2: 35, r3: 25 },
+                { x: canvas.width*0.65, y: canvas.height*0.4, r1: 25, r2: 30, r3: 20 }, { x: canvas.width*0.9, y: canvas.height*0.25, r1: 22, r2: 28, r3: 19 },
+                { x: canvas.width*0.15, y: canvas.height*0.85, r1: 30, r2: 35, r3: 28}
+            ];
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'; 
+            cloudPositions.forEach(cloud => {
+                ctx.beginPath();
+                ctx.arc(cloud.x, cloud.y, cloud.r1, 0, Math.PI * 2);
+                ctx.arc(cloud.x + cloud.r1*0.8, cloud.y + cloud.r1*0.2, cloud.r2, 0, Math.PI * 2);
+                ctx.arc(cloud.x - cloud.r1*0.7, cloud.y + cloud.r1*0.3, cloud.r3, 0, Math.PI * 2);
+                ctx.closePath(); ctx.fill();
+            });
+        }
+        function drawObstacles(ctx) { 
+            obstacles.forEach(obstacle => {
+                if (obstacle.type === 'storm') {
+                    ctx.fillStyle = obstacle.color;
+                    const pulseFactor = Math.sin(Date.now() / 500) * 5 + obstacle.radius; 
+                    ctx.beginPath();
+                    ctx.arc(obstacle.x, obstacle.y, pulseFactor, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = 'rgba(50, 50, 70, 0.4)';
+                    ctx.beginPath();
+                    ctx.arc(obstacle.x, obstacle.y, pulseFactor * 0.6, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+        }
+        function drawActivePirate(ctx) { 
+            if (!currentPirate || !currentPirate.active) return;
+            const p = currentPirate; const detailColor = p.type === 'boss' ? '#CD5C5C' : '#4A0748'; 
+            ctx.fillStyle = p.color; ctx.beginPath();
+            if (p.type === 'boss') { 
+                ctx.moveTo(p.x, p.y + p.height * 0.3); ctx.lineTo(p.x + p.width * 0.4, p.y);
+                ctx.lineTo(p.x + p.width, p.y + p.height * 0.3); ctx.lineTo(p.x + p.width, p.y + p.height * 0.7);
+                ctx.lineTo(p.x + p.width * 0.4, p.y + p.height); ctx.lineTo(p.x, p.y + p.height * 0.7);
+            } else { 
+                ctx.moveTo(p.x, p.y + p.height / 2); ctx.lineTo(p.x + p.width * 0.3, p.y);
+                ctx.lineTo(p.x + p.width, p.y + p.height / 2); ctx.lineTo(p.x + p.width * 0.7, p.y + p.height);
+            }
+            ctx.closePath(); ctx.fill();
+            ctx.fillStyle = detailColor; ctx.beginPath(); 
+            ctx.moveTo(p.x + p.width * 0.4, p.y - p.height * (p.type === 'boss' ? 0.3 : 0.2));
+            ctx.lineTo(p.x + p.width * 0.8, p.y + p.height * (p.type === 'boss' ? 0.0 : 0.1));
+            ctx.lineTo(p.x + p.width * 0.5, p.y + p.height * (p.type === 'boss' ? 0.6 : 0.5));
+            ctx.closePath(); ctx.fill();
+            ctx.fillStyle = '#FFFFFF'; 
+            const centerX = p.x + p.width * 0.5; const centerY = p.y + p.height * 0.5;
+            ctx.beginPath(); ctx.arc(centerX, centerY - (p.type === 'boss' ? 4 : 3), (p.type === 'boss' ? 4 : 3), 0, Math.PI * 2); ctx.fill();
+            ctx.fillRect(centerX - (p.type === 'boss' ? 6 : 5), centerY +1, (p.type === 'boss' ? 12 : 10), 2); 
+            ctx.save(); ctx.translate(centerX, centerY+(p.type === 'boss' ? 3 : 2)); ctx.rotate(Math.PI / 2);
+            ctx.fillRect(-(p.type === 'boss' ? 6 : 5), -1, (p.type === 'boss' ? 12 : 10), 2); ctx.restore();
+        }
+        function drawProjectiles(ctx) { 
+            projectiles.forEach(p => {
+                ctx.fillStyle = p.color; 
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawClouds(ctx); drawObstacles(ctx); drawIslands(ctx);
+            drawProjectiles(ctx); 
+            if (!gameOverState) drawPlayer(ctx); 
+            drawActivePirate(ctx); 
+        }
+
+        // --- UI Updates & Dialog ---
+        function showMessage(text) { messageBox.textContent = text; }
+        function updateSkyCoinsDisplay() { skycoinsDisplay.textContent = skyCoins; }
+        function updateCannonballDisplay() { cannonballCountDisplay.textContent = player.ammoBelt.length; } 
+        function updateCurrentTaskDisplay() { 
+            const currentJob = jobs.find(job => job.id === player.currentJobId && !job.completed);
+            if (currentJob) {
+                currentTaskDisplay.textContent = currentJob.pickedUp ? `Deliver ${currentJob.packageName} to ${currentJob.toIslandName}` : `Pick up ${currentJob.packageName} from ${currentJob.fromIslandName}`;
+            } else {
+                currentTaskDisplay.textContent = "None. Accept a job!";
+            }
+        }
+        function updateHealthBar() { 
+            healthBarDiv.innerHTML = ''; 
+            for (let i = 0; i < player.maxHealth / 2; i++) {
+                const heart = document.createElement('span');
+                heart.classList.add('heart');
+                if (player.health >= (i + 1) * 2) { heart.textContent = '♥'; } 
+                else if (player.health > i * 2 && player.health < (i + 1) * 2) { heart.textContent = '💔';} 
+                else { heart.textContent = '♡'; heart.classList.add('empty'); }
+                healthBarDiv.appendChild(heart);
+            }
+        }
+        function updateBossHealthBar() { 
+            if (currentPirate && currentPirate.type === 'boss' && currentPirate.active) {
+                bossHealthBarDiv.innerHTML = '';
+                for (let i = 0; i < currentPirate.maxHealth; i++) { 
+                    const heart = document.createElement('span');
+                    heart.classList.add('boss-heart');
+                    heart.textContent = i < currentPirate.health ? '♦' : '♢'; 
+                    if (i >= currentPirate.health) heart.classList.add('empty');
+                    bossHealthBarDiv.appendChild(heart);
+                }
+            }
+        }
+        function showVillainDialog(message) { 
+            villainMessage.textContent = message;
+            villainPortrait.src = (currentPirate ? currentPirate.portraitUrl : villain.portraitUrl) + `&cachebust=${Date.now()}`; 
+            villainDialog.classList.remove('hidden');
+            gamePaused = true; 
+            if (Tone.Transport.state === "started") Tone.Transport.pause();
+        }
+        function hideVillainDialog() { 
+            villainDialog.classList.add('hidden');
+            gamePaused = false; 
+            if (!musicMuted && Tone.Transport.state === "paused" && !gameOverState) Tone.Transport.start();
+        }
+        closeDialogBtn.addEventListener('click', hideVillainDialog);
+        function triggerGameOver(reason) { 
+            if (gameOverState) return; 
+            gameOverState = true; gamePaused = true;
+            document.getElementById('game-over-message').textContent = `GAME OVER - ${reason}`;
+            gameOverDialog.classList.remove('hidden');
+            if (Tone.Transport.state === "started") Tone.Transport.stop(); 
+            if(themeMelody && typeof themeMelody.stop === 'function') themeMelody.stop(); 
+            if(bassLoop && typeof bassLoop.stop === 'function') bassLoop.stop();
+            try { errorSound.triggerAttackRelease("C2", "1s"); } catch(e) { console.error("Sound error:", e); } 
+        }
+        restartGameBtn.addEventListener('click', () => {
+            gameOverDialog.classList.add('hidden');
+            // resetGame() is called from selectGameMode after a mode is chosen,
+            // or if we want to restart in the same mode, we can call it directly.
+            // For now, clicking restart will take them back to mode selection.
+            modeSelectionDialog.classList.remove('hidden');
+            gameContentWrapper.classList.add('hidden');
+            // No, for restart, we should use the current gameMode
+            if(gameMode) initializeFullGame(); // Re-initialize with the current mode
+            else { // Should not happen if game was started, but as a fallback:
+                 modeSelectionDialog.classList.remove('hidden');
+                 gameContentWrapper.classList.add('hidden');
+            }
+        });
+
+        // --- Airship Shop & Armory ---
+        function displayShopItems() {
+            shopListDiv.innerHTML = '';
+            for (const typeId in airshipTypes) {
+                const ship = airshipTypes[typeId];
+                const shopItemEntry = document.createElement('div');
+                shopItemEntry.classList.add('item-entry', 'shop-item');
+                if (ship.owned) shopItemEntry.classList.add('owned');
+                if (player.currentAirship === typeId) shopItemEntry.classList.add('equipped');
+                
+                let buttonHtml = '';
+                if (!ship.owned) { buttonHtml = `<button class="buy-ship-btn" data-ship-id="${typeId}">Buy (${ship.cost} SC)</button>`; } 
+                else if (player.currentAirship !== typeId) { buttonHtml = `<button class="equip-ship-btn" data-ship-id="${typeId}">Equip</button>`; } 
+                else { buttonHtml = `<span class="font-bold text-green-700">(Equipped)</span>`; }
+
+                shopItemEntry.innerHTML = `
+                    <div class="item-icon icon-ship" style="background-color: ${ship.color};"></div>
+                    <div class="item-details text-xs">
+                        <p class="font-bold">${ship.name}</p>
+                        <p>Speed: ${ship.speed}, Max Health: ${ship.maxHealth / 2} Hearts</p>
+                        <p>${ship.owned ? (player.currentAirship === typeId ? '' : 'Owned') : `Cost: ${ship.cost} SkyCoins`}</p>
+                        ${buttonHtml}
+                    </div>`;
+                shopListDiv.appendChild(shopItemEntry);
+            }
+            document.querySelectorAll('.buy-ship-btn').forEach(button => button.addEventListener('click', (e) => buyAirship(e.target.dataset.shipId)));
+            document.querySelectorAll('.equip-ship-btn').forEach(button => button.addEventListener('click', (e) => equipAirship(e.target.dataset.shipId, false)));
+        }
+        function buyAirship(shipId) { 
+            const shipToBuy = airshipTypes[shipId];
+            if (skyCoins >= shipToBuy.cost) {
+                skyCoins -= shipToBuy.cost; shipToBuy.owned = true;
+                equipAirship(shipId, false); 
+                updateSkyCoinsDisplay(); displayShopItems();
+                showMessage(`Purchased ${shipToBuy.name}!`);
+                try { deliverSound.triggerAttackRelease("A4", "0.2s"); } catch(e) { console.error("Sound error:", e); }
+            } else {
+                showMessage("Not enough SkyCoins to buy this airship!");
+                try { errorSound.triggerAttackRelease("C3", "0.2s"); } catch(e) { console.error("Sound error:", e); }
+            }
+        }
+        function equipAirship(shipId, chargeCost = true) { 
+            const newShip = airshipTypes[shipId];
+            if (newShip.owned) {
+                player.currentAirship = shipId; player.speed = newShip.speed; player.baseSpeed = newShip.speed; 
+                player.maxHealth = newShip.maxHealth; player.health = newShip.maxHealth; player.color = newShip.color;
+                airshipTypeDisplay.textContent = newShip.name;
+                updateHealthBar(); displayShopItems(); 
+                showMessage(`${newShip.name} equipped!`);
+                 try { pickupSound.triggerAttackRelease("F4", "0.1s"); } catch(e) { console.error("Sound error:", e); }
+            } else if (chargeCost) {  buyAirship(shipId); }
+        }
+        
+        function displayArmoryItems() {
+            armoryListDiv.innerHTML = '';
+            for (const typeId in cannonballTypes) {
+                const ammo = cannonballTypes[typeId];
+                const armoryItemEntry = document.createElement('div');
+                armoryItemEntry.classList.add('item-entry', 'armory-item');
+                armoryItemEntry.innerHTML = `
+                    <div class="item-icon ${ammo.iconClass}"></div>
+                    <div class="item-details text-xs">
+                        <p class="font-bold">${ammo.name} x1</p>
+                        <p>Damage: ${ammo.damage} HP. Cost: ${ammo.cost} SkyCoins</p>
+                        <button class="buy-ammo-btn" data-ammo-type="${typeId}">Buy ${ammo.name}</button>
+                    </div>
+                `;
+                armoryListDiv.appendChild(armoryItemEntry);
+            }
+            document.querySelectorAll('.buy-ammo-btn').forEach(button => {
+                button.addEventListener('click', (e) => buyAmmo(e.target.dataset.ammoType));
+            });
+        }
+
+        function buyAmmo(ammoTypeId) {
+            const ammoToBuy = cannonballTypes[ammoTypeId];
+            if (skyCoins >= ammoToBuy.cost) {
+                skyCoins -= ammoToBuy.cost;
+                player.ammoBelt.push(ammoTypeId); 
+                updateSkyCoinsDisplay();
+                updateCannonballDisplay(); 
+                showMessage(`Purchased 1 ${ammoToBuy.name}!`);
+                try { pickupSound.triggerAttackRelease("G3", "0.1s"); } catch(e) { console.error("Sound error:", e); }
+            } else {
+                showMessage(`Not enough SkyCoins for a ${ammoToBuy.name}!`);
+                try { errorSound.triggerAttackRelease("C3", "0.2s"); } catch(e) { console.error("Sound error:", e); }
+            }
+        }
+        
+        // --- Event Listeners ---
+        function keyDown(e) { 
+            const keyToUse = e.code || e.key; 
+            if (keys.hasOwnProperty(keyToUse)) { 
+                keys[keyToUse] = true; 
+                if(keyToUse === "Space" || keyToUse.startsWith("Arrow") || ["KeyW", "KeyA", "KeyS", "KeyD"].includes(keyToUse)) e.preventDefault(); 
+            }
+        }
+        function keyUp(e) { 
+             const keyToUse = e.code || e.key;
+             if (keys.hasOwnProperty(keyToUse)) {
+                keys[keyToUse] = false; 
+                if(keyToUse === "Space" || keyToUse.startsWith("Arrow") || ["KeyW", "KeyA", "KeyS", "KeyD"].includes(keyToUse)) e.preventDefault();
+            }
+        }
+        document.addEventListener('keydown', keyDown);
+        document.addEventListener('keyup', keyUp);
+
+        muteMusicBtn.addEventListener('click', () => { 
+            if (typeof Tone === 'undefined') return;
+            musicMuted = !musicMuted;
+            if (musicMuted) {
+                Tone.Transport.pause(); 
+                muteMusicBtn.textContent = "Unmute Music"; muteMusicBtn.style.backgroundColor = '#555'; 
+            } else {
+                if (!gameOverState && !gamePaused && Tone.Transport.state !== "started") {
+                     Tone.Transport.start();
+                     if(themeMelody && themeMelody.state !== "started") themeMelody.start(0);
+                     if(bassLoop && bassLoop.state !== "started") bassLoop.start(0);
+                } else if (!gameOverState && !gamePaused && Tone.Transport.state === "paused") {
+                    Tone.Transport.start(); 
+                }
+                muteMusicBtn.textContent = "Mute Music"; muteMusicBtn.style.backgroundColor = '#ff8c00'; 
+            }
+        });
+
+        // --- Game Loop ---
+        let lastRenderTime = 0; const FPS = 60; const frameInterval = 1000 / FPS;
+        function gameLoop(currentTime) {
+            requestAnimationFrame(gameLoop);
+            const elapsed = currentTime - lastRenderTime;
+            if (elapsed > frameInterval) {
+                lastRenderTime = currentTime - (elapsed % frameInterval);
+                if (!gamePaused && !gameOverState && gameMode) { // Ensure gameMode is selected
+                    updatePlayer();
+                    updatePirateLogic(); 
+                    updateProjectiles();
+                }
+                draw();
+            }
+        }
+
+        // --- Initialization ---
+        function init() {
+            // Show mode selection, hide game content initially
+            modeSelectionDialog.classList.remove('hidden');
+            gameContentWrapper.classList.add('hidden');
+            // resizeCanvas is called in initializeFullGame after mode is selected
+        }
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
